@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Loan Tracer Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 250px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+      font-size: 36px;
+      margin: 10px 0;
+    }
+    .card span {
+      font-weight: bold;
+      font-size: 18px;
+      color: #555;
+    }
+    .green {
+      color: green;
+    }
+    .red {
+      color: red;
+    }
+
+    .links {
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .links a {
+      text-decoration: none;
+      margin: 0 15px;
+      font-weight: bold;
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Loan Tracer Dashboard</h1>
+<form method="get" style="text-align:center; margin-bottom: 30px;">
+  <input type="text" name="name" placeholder="Search by name" value="{{ name_query }}" />
+  <input type="date" name="date" value="{{ date_query }}" />
+  <button type="submit">🔍 Filter</button>
+  <a href="/" style="margin-left: 10px;">Clear</a>
+</form>
+
+  <div class="cards">
+    <div class="card">
+      <span>Total Clients</span>
+      <h2>{{ total_clients }}</h2>
+    </div>
+
+    <div class="card">
+      <span>Total Loaned</span>
+      <h2>KES {{ total_loaned }}</h2>
+    </div>
+
+    <div class="card">
+      <span>Total Collected</span>
+      <h2>KES {{ total_collected }}</h2>
+    </div>
+
+    <div class="card">
+      <span>Total Remaining</span>
+      <h2 class="{% if total_remaining <= 0 %}green{% else %}red{% endif %}">
+        KES {{ total_remaining }}
+      </h2>
+    </div>
+  </div>
+
+  <div class="links">
+  <a href="{% url 'daily-summary' %}">📅 Daily Summary</a>
+  <a href="{% url 'client-summary' %}">👥 Client Summary</a>
+  <a href="{% url 'daily-summary-pdf' %}?date={{ date_query|default:today|date:'Y-m-d' }}" target="_blank">
+    📁 Daily PDF
+  </a>
+  <a href="{% url 'client-summary-pdf' %}?name={{ name_query }}" target="_blank">
+    📁 Client PDF
+  </a>
+
+  </div>
+</body>
+</html>

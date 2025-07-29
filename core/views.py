@@ -1,0 +1,236 @@
+from django.shortcuts import render
+from .models import Client, Loan, Payment
+from django.db.models import Q
+from datetime import datetime
+from .models import OpeningBalance, MoneyOut
+from django.db.models import Sum
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+from django.http import HttpResponse
+from django.db.models import Sum
+from datetime import date
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from .models import MoneyOut
+from django.template.loader import render_to_string
+from .utils import get_opening_balance
+import weasyprint
+from datetime import timedelta, date
+from .models import Loan  # Ensure Loan is imported
+
+
+
+
+@require_POST
+def update_moneyout_description(request):
+    moneyout_id = request.POST.get("id")
+    description = request.POST.get("description")
+
+    try:
+        entry = MoneyOut.objects.get(id=moneyout_id)
+        entry.description = description
+        entry.save()
+        return JsonResponse({'success': True})
+    except MoneyOut.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Entry not found'})
+
+def search_view(request):
+    query = request.GET.get("q", "")
+    results = {}
+
+    if query:
+        results["clients"] = Client.objects.filter(name__icontains=query)
+        results["loans"] = Loan.objects.filter(Q(client__name__icontains=query) | Q(date__icontains=query))
+        results["payments"] = Payment.objects.filter(Q(client__name__icontains=query) | Q(date__icontains=query))
+
+    return render(request, "core/search.html", {"results": results, "query": query})
+
+
+def daily_summary_view(request):
+    selected_date = request.GET.get("date", "")
+    context = {"selected_date": selected_date}
+
+    if selected_date:
+        try:
+            date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
+
+            opening = OpeningBalance.objects.filter(date=date_obj).first()
+            opening_amount = opening.amount if opening else 0
+
+            loans = Loan.objects.filter(date=date_obj)
+            payments = Payment.objects.filter(date=date_obj)
+            moneyouts = MoneyOut.objects.filter(date=date_obj)
+
+            total_loans = sum([l.amount for l in loans])
+            total_collections = sum([p.amount for p in payments])
+            total_moneyout = sum([m.amount for m in moneyouts])
+
+            closing_balance = opening_amount + total_collections - total_loans - total_moneyout
+
+            context.update({
+                "opening": opening_amount,
+                "total_loans": total_loans,
+                "total_collections": total_collections,
+                "total_moneyout": total_moneyout,
+                "closing_balance": closing_balance,
+                "loans": loans,
+                "payments": payments,
+                "moneyouts": moneyouts
+            })
+
+        except ValueError:
+            context["error"] = "Invalid date format"
+
+    return render(request, "core/daily_summary.html", context)
+
+
+def client_summary_view(request):
+    name_query = request.GET.get("name", "")
+    date_query = request.GET.get("date", "")
+
+    loans = Loan.objects.select_related("client")
+    if name_query:
+        loans = loans.filter(client__name__icontains=name_query)
+    if date_query:
+        loans = loans.filter(date=date_query)
+
+    client_data = []
+    for loan in loans:
+        client = loan.client
+        total_paid = sum(p.amount for p in Payment.objects.filter(client=client))
+        total_due = loan.total_with_interest()
+        remaining = total_due - total_paid
+
+        # Daily Installment
+        daily_installment = round(total_due / 12, 2)
+
+        client_data.append({
+            "loan": loan,
+            "client": client,
+            "total_paid": total_paid,
+            "remaining": remaining,
+            "daily_installment": daily_installment,
+        })
+
+    context = {
+        "client_data": client_data,
+        "name_query": name_query,
+        "date_query": date_query,
+    }
+    return render(request, "core/client_summary.html", context)
+
+
+def render_to_pdf(template_src, context_dict={}):
+    template = get_template(template_src)
+    html = template.render(context_dict)
+    response = HttpResponse(content_type='application/pdf')
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('PDF generation failed')
+    return response
+
+def client_summary_pdf(request):
+    loans = Loan.objects.select_related("client")
+    client_data = []
+
+    for loan in loans:
+        client = loan.client
+        total_paid = sum(p.amount for p in Payment.objects.filter(client=client))
+        total_due = loan.total_with_interest()
+        remaining = total_due - total_paid
+        daily_installment = round(total_due / 12, 2)
+
+        client_data.append({
+            "loan": loan,
+            "client": client,
+            "total_paid": total_paid,
+            "remaining": remaining,
+            "daily_installment": daily_installment,
+        })
+
+    context = {
+        "client_data": client_data,
+        "today": date.today(),
+    }
+    return render_to_pdf("core/client_summary_pdf.html", context)
+
+
+def daily_summary_pdf(request):
+    from datetime import datetime
+    from .models import OpeningBalance, Loan, Payment, MoneyOut
+
+    selected_date = request.GET.get("date")
+    if not selected_date:
+        return HttpResponse("Please provide a date in the URL: ?date=YYYY-MM-DD")
+
+    try:
+        date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
+    except ValueError:
+        return HttpResponse("Invalid date format")
+
+    opening = OpeningBalance.objects.filter(date=date_obj).first()
+    opening_amount = opening.amount if opening else 0
+
+    loans = Loan.objects.filter(date=date_obj)
+    payments = Payment.objects.filter(date=date_obj)
+    moneyouts = MoneyOut.objects.filter(date=date_obj)
+
+    total_loans = sum([l.amount for l in loans])
+    total_collections = sum([p.amount for p in payments])
+    total_moneyout = sum([m.amount for m in moneyouts])
+
+    closing_balance = opening_amount + total_collections - total_loans - total_moneyout
+
+    context = {
+        "date": selected_date,
+        "opening": opening_amount,
+        "total_loans": total_loans,
+        "total_collections": total_collections,
+        "total_moneyout": total_moneyout,
+        "closing_balance": closing_balance,
+        "loans": loans,
+        "payments": payments,
+        "moneyouts": moneyouts,
+    }
+
+    template = get_template("core/daily_summary_pdf.html")
+    html = template.render(context)
+    response = HttpResponse(content_type='application/pdf')
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    return response if not pisa_status.err else HttpResponse("PDF generation error")
+
+
+
+def dashboard_view(request):
+    name_query = request.GET.get("name", "")
+    date_query = request.GET.get("date", "")
+
+    loans = Loan.objects.all()
+    payments = Payment.objects.all()
+
+    if name_query:
+        loans = loans.filter(client__name__icontains=name_query)
+        payments = payments.filter(loan__client__name__icontains=name_query)
+
+    if date_query:
+        loans = loans.filter(date=date_query)
+        payments = payments.filter(date=date_query)
+
+    total_clients = Client.objects.count()
+    total_loaned = loans.aggregate(Sum("amount"))["amount__sum"] or 0
+    total_collected = payments.aggregate(Sum("amount"))["amount__sum"] or 0
+    total_interest = total_loaned * 0.2
+    total_due = total_loaned + total_interest
+    total_remaining = total_due - total_collected
+
+    context = {
+        "total_clients": total_clients,
+        "total_loaned": total_loaned,
+        "total_collected": total_collected,
+        "total_remaining": total_remaining,
+        "name_query": name_query,
+        "date_query": date_query,
+        "today": date.today(),  # ✅ THIS LINE FIXES THE ERROR
+    }
+
+    return render(request, "core/dashboard.html", context)

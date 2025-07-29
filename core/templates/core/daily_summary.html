@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 14px;
+      margin: 30px;
+      color: #333;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 15px;
+    }
+
+    form {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    input[type="date"] {
+      padding: 6px 10px;
+      margin-right: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 6px 12px;
+      background-color: #3498db;
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    p strong {
+      font-weight: bold;
+    }
+
+    .money {
+      color: #2e8b57;
+      font-weight: bold;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f5f5f5;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9fcff;
+    }
+
+    ul {
+      margin: 10px 0 20px;
+    }
+
+    ul li {
+      padding: 4px 0;
+    }
+
+    h3, h4 {
+      color: #34495e;
+      margin-top: 25px;
+    }
+
+    .totals-row td {
+      font-weight: bold;
+      background-color: #eef6ff;
+    }
+  </style>
+</head>
+<body>
+
+  <form method="get">
+    <input type="date" name="date" value="{{ selected_date }}">
+    <button type="submit">View Summary</button>
+  </form>
+
+  {% if selected_date %}
+    <h2>Daily Summary for {{ selected_date }}</h2>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+      <a href="{% url 'daily-summary-pdf' %}?date={{ selected_date }}" target="_blank">
+        <button style="background-color: #2ecc71;">📄 Export Summary as PDF</button>
+      </a>
+    </div>
+
+    <p><strong>Opening Balance:</strong> <span class="money">{{ opening }}</span></p>
+    <p><strong>Total Loans:</strong> <span class="money">{{ total_loans }}</span></p>
+    <p><strong>Total Collections:</strong> <span class="money">{{ total_collections }}</span></p>
+    <p><strong>Total Money Out:</strong> <span class="money">{{ total_moneyout }}</span></p>
+    <p><strong>Closing Balance:</strong> <span class="money">{{ closing_balance }}</span></p>
+
+    <h3>Details</h3>
+
+    <h4>Loans:</h4>
+    <ul>
+      {% for l in loans %}
+        <li>{{ l.client.name }} - <span class="money">{{ l.amount }}</span></li>
+      {% empty %}
+        <li>No loans</li>
+      {% endfor %}
+    </ul>
+
+    <h4>Collections (Payments):</h4>
+    {% if payments %}
+      <table>
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+            <tr>
+              <td>{{ p.client.name }}</td>
+              <td class="money">{{ p.amount }}</td>
+              <td>{{ p.date }}</td>
+            </tr>
+          {% endfor %}
+          <tr class="totals-row">
+            <td>Total</td>
+            <td class="money">{{ total_collections }}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    {% else %}
+      <p>No payments</p>
+    {% endif %}
+
+    <h4>Money Out:</h4>
+    {% if moneyouts %}
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Amount (KES)</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in moneyouts %}
+            <tr>
+              <td>{{ m.date }}</td>
+              <td>{{ m.get_type_display }}</td>
+              <td class="money">{{ m.amount }}</td>
+              <td contenteditable="true" onblur="saveDescription({{ m.id }}, this.innerText)">
+                {{ m.description }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No entries</p>
+    {% endif %}
+
+  {% endif %}
+
+  <script>
+    function saveDescription(id, text) {
+      fetch("{% url 'update-moneyout-description' %}", {
+        method: "POST",
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          id: id,
+          description: text
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) alert("Failed to update description");
+      });
+    }
+  </script>
+
+</body>
+</html>

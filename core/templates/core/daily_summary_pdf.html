@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 14px;
+      background: #f4f6f8;
+      color: #333;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin: 5px 0;
+      font-size: 15px;
+    }
+
+    .summary-box {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 15px 20px;
+      margin: 20px auto;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      max-width: 800px;
+    }
+
+    h3 {
+      margin-top: 30px;
+      color: #2980b9;
+      border-bottom: 2px solid #2980b9;
+      padding-bottom: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background-color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    th {
+      background-color: #2980b9;
+      color: white;
+      text-align: left;
+      padding: 8px;
+    }
+
+    td {
+      padding: 8px;
+      border-top: 1px solid #ddd;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    .highlight {
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="summary-box">
+    <h2>📋 Daily Summary - {{ date }}</h2>
+    <p><strong>Opening Balance:</strong> <span style="color: #2980b9; font-weight: bold;">{{ opening }}</span></p>
+<p><strong>Total Loans:</strong> <span style="color: goldenrod; font-weight: bold;">{{ total_loans }}</span></p>
+<p><strong>Total Collections:</strong> <span style="color: green; font-weight: bold;">{{ total_collections }}</span></p>
+<p><strong>Total Money Out:</strong> <span style="color: crimson; font-weight: bold;">{{ total_moneyout }}</span></p>
+<p><strong>Closing Balance:</strong> <span style="color: #8e44ad; font-weight: bold;">{{ closing_balance }}</span></p>
+
+
+    <h3>Loan Details</h3>
+    <table>
+      <tr><th>Client</th><th>Amount (KES)</th></tr>
+      {% for loan in loans %}
+        <tr><td>{{ loan.client.name }}</td><td>{{ loan.amount }}</td></tr>
+      {% empty %}
+        <tr><td colspan="2">No loans</td></tr>
+      {% endfor %}
+    </table>
+
+    <h3>Payments</h3>
+    <table>
+      <tr><th>Client</th><th>Amount (KES)</th></tr>
+      {% for p in payments %}
+        <tr><td>{{ p.client.name }}</td><td>{{ p.amount }}</td></tr>
+      {% empty %}
+        <tr><td colspan="2">No payments</td></tr>
+      {% endfor %}
+    </table>
+
+    <h3>Money Out</h3>
+    <table>
+      <tr><th>Type</th><th>Amount (KES)</th></tr>
+      {% for m in moneyouts %}
+        <tr><td>{{ m.get_type_display }}</td><td>{{ m.amount }}</td></tr>
+      {% empty %}
+        <tr><td colspan="2">No entries</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</body>
+</html>

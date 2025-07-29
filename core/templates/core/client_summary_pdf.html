@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 13px;
+      margin: 40px;
+      color: #333;
+      background-color: #fefefe;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    p {
+      text-align: right;
+      font-size: 13px;
+      margin-bottom: 20px;
+      color: #555;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #f0f4f8;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #f9fcfe;
+    }
+
+    tbody tr:hover {
+      background-color: #eaf4fb;
+    }
+
+    td:nth-child(2),  /* Loan */
+    td:nth-child(3),  /* Total Due */
+    td:nth-child(4),  /* Paid */
+    td:nth-child(6) { /* Daily Installment */
+      font-weight: bold;
+      color: #2e8b57;
+    }
+
+    td:nth-child(5) { /* Remaining */
+      font-weight: bold;
+      color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+    {% load humanize %}
+
+  <h2>Client Loan Summary (PDF)</h2>
+  <p>Date: {{ today }}</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Client</th>
+        <th>Loan (KES)</th>
+        <th>Total Due (KES)</th>
+        <th>Paid (KES)</th>
+        <th>Remaining (KES)</th>
+        <th>Daily Installment (KES)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in client_data %}
+        <tr>
+          <td>{{ entry.client.name }}</td>
+          <td>{{ entry.loan.amount|floatformat:0|intcomma }}</td>
+          <td>{{ entry.loan.total_with_interest|floatformat:0|intcomma }}</td>
+          <td>{{ entry.total_paid|floatformat:0|intcomma }}</td>
+          <td>{{ entry.remaining|floatformat:0|intcomma }}</td>
+          <td>{{ entry.daily_installment|floatformat:0|intcomma }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
