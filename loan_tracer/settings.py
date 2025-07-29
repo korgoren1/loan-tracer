@@ -29,19 +29,16 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
+    'django.contrib.staticfiles',  # ✅ keep only one
     'core',
     'django.contrib.humanize',
-    'django.contrib.staticfiles',
-    'whitenoise.runserver_nostatic',  # enable WhiteNoise for static files
-
+    'whitenoise.runserver_nostatic',  # ✅ keep this
 ]
 
 MIDDLEWARE = [
@@ -138,6 +135,8 @@ STATIC_URL = '/static/'
 
 # Optional for compression
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
 
 # Allow all hosts (or specify yours)
 ALLOWED_HOSTS = ['*']
