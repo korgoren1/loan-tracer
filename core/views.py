@@ -17,6 +17,14 @@ from .utils import get_opening_balance
 import weasyprint
 from datetime import timedelta, date
 from .models import Loan  # Ensure Loan is imported
+from django import forms
+from django.utils import timezone
+from django.shortcuts import redirect
+from .models import TYPE_CHOICES
+from .models import OpeningBalance, Loan, Payment, MoneyOut
+from .forms import LoanForm, PaymentForm, OpeningBalanceForm, MoneyOutForm,  ClientForm
+from django.shortcuts import get_object_or_404
+from .models import Client, Loan, Payment, MoneyOut, OpeningBalance
 
 
 
@@ -234,3 +242,119 @@ def dashboard_view(request):
     }
 
     return render(request, "core/dashboard.html", context)
+
+
+def get_or_create_client(name):
+    client, created = Client.objects.get_or_create(name__iexact=name.strip(), defaults={'name': name.strip()})
+    return client
+
+def data_entry_view(request):
+    loan_form = LoanForm()
+    payment_form = PaymentForm()
+    moneyout_form = MoneyOutForm()
+    opening_form = OpeningBalanceForm()
+
+
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')  # ✅ Add this line
+
+        if 'submit_loan' in request.POST and loan_form.is_valid():
+            client_name = loan_form.cleaned_data['client_name']
+            client, _ = Client.objects.get_or_create(name=client_name)
+
+            Loan.objects.create(
+                client=client,
+                amount=loan_form.cleaned_data['amount'],
+                date=loan_form.cleaned_data['date'] or timezone.now().date()
+            )
+            return redirect('data_entry')
+
+        elif 'submit_payment' in request.POST and payment_form.is_valid():
+            client_name = payment_form.cleaned_data['client_name']
+            client, _ = Client.objects.get_or_create(name=client_name)
+
+            Payment.objects.create(
+                client=client,
+                amount=payment_form.cleaned_data['amount'],
+                date=payment_form.cleaned_data['date'] or timezone.now().date()
+            )
+            return redirect('data_entry')
+
+        elif form_type == 'moneyout':
+            moneyout_form = MoneyOutForm(request.POST)
+            if moneyout_form.is_valid():
+                moneyout_form.save()
+                return redirect('data_entry')
+
+        elif form_type == 'opening':
+            opening_form = OpeningBalanceForm(request.POST)
+            if opening_form.is_valid():
+                opening_form.save()
+                return redirect('data_entry')
+
+    context = {
+        "loan_form": loan_form,
+        "payment_form": payment_form,
+        "moneyout_form": moneyout_form,
+        "opening_form": opening_form,
+        "loans": Loan.objects.all().order_by("-date"),
+        "payments": Payment.objects.all().order_by("-date"),
+        "moneyouts": MoneyOut.objects.all().order_by("-date"),
+        "openings": OpeningBalance.objects.all().order_by("-date"),
+    }
+    return render(request, "core/data_entry.html", context)
+
+
+
+def delete_loan(request, pk):
+    loan = get_object_or_404(Loan, pk=pk)
+    loan.delete()
+    return redirect('data_entry')
+
+def delete_payment(request, pk):
+    payment = get_object_or_404(Payment, pk=pk)
+    payment.delete()
+    return redirect('data_entry')
+
+def delete_moneyout(request, pk):
+    moneyout = get_object_or_404(MoneyOut, pk=pk)
+    moneyout.delete()
+    return redirect('data_entry')
+
+def delete_opening(request, pk):
+    opening = get_object_or_404(OpeningBalance, pk=pk)
+    opening.delete()
+    return redirect('data_entry')
+
+
+def edit_loan(request, pk):
+    loan = get_object_or_404(Loan, pk=pk)
+    form = LoanForm(request.POST or None, instance=loan)
+    if form.is_valid():
+        form.save()
+        return redirect('data_entry')
+    return render(request, 'core/edit_form.html', {'form': form, 'title': 'Edit Loan'})
+
+def edit_payment(request, pk):
+    payment = get_object_or_404(Payment, pk=pk)
+    form = PaymentForm(request.POST or None, instance=payment)
+    if form.is_valid():
+        form.save()
+        return redirect('data_entry')
+    return render(request, 'core/edit_form.html', {'form': form, 'title': 'Edit Payment'})
+
+def edit_moneyout(request, pk):
+    moneyout = get_object_or_404(MoneyOut, pk=pk)
+    form = MoneyOutForm(request.POST or None, instance=moneyout)
+    if form.is_valid():
+        form.save()
+        return redirect('data_entry')
+    return render(request, 'core/edit_form.html', {'form': form, 'title': 'Edit Money Out'})
+
+def edit_opening(request, pk):
+    opening = get_object_or_404(OpeningBalance, pk=pk)
+    form = OpeningBalanceForm(request.POST or None, instance=opening)
+    if form.is_valid():
+        form.save()
+        return redirect('data_entry')
+    return render(request, 'core/edit_form.html', {'form': form, 'title': 'Edit Opening Balance'})
