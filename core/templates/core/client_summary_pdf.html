@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Client Loan Summary (PDF)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -32,6 +34,7 @@
       box-shadow: 0 4px 8px rgba(0,0,0,0.05);
       border-radius: 6px;
       overflow: hidden;
+      font-size: 13px;
     }
 
     th, td {
@@ -54,23 +57,84 @@
       background-color: #eaf4fb;
     }
 
-    td:nth-child(2),  /* Loan */
-    td:nth-child(3),  /* Total Due */
-    td:nth-child(4),  /* Paid */
-    td:nth-child(6) { /* Daily Installment */
+    td:nth-child(2),
+    td:nth-child(3),
+    td:nth-child(4),
+    td:nth-child(6) {
       font-weight: bold;
       color: #2e8b57;
     }
 
-    td:nth-child(5) { /* Remaining */
+    td:nth-child(5) {
       font-weight: bold;
       color: #c0392b;
+    }
+
+    /* Mobile/Small Screen Styling */
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tr {
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 10px;
+        background: #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+
+      td {
+        padding-left: 50%;
+        position: relative;
+        text-align: left;
+        border: none;
+        border-bottom: 1px solid #eee;
+      }
+
+      td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        font-weight: bold;
+        color: #888;
+      }
+    }
+
+    /* For printing */
+    @media print {
+      body {
+        margin: 10mm;
+      }
+
+      table {
+        box-shadow: none;
+        page-break-inside: auto;
+      }
+
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      tfoot {
+        display: table-footer-group;
+      }
     }
   </style>
 </head>
 <body>
-    {% load humanize %}
-
+  {% load humanize %}
   <h2>Client Loan Summary (PDF)</h2>
   <p>Date: {{ today }}</p>
 
@@ -88,12 +152,12 @@
     <tbody>
       {% for entry in client_data %}
         <tr>
-          <td>{{ entry.client.name }}</td>
-          <td>{{ entry.loan.amount|floatformat:0|intcomma }}</td>
-          <td>{{ entry.loan.total_with_interest|floatformat:0|intcomma }}</td>
-          <td>{{ entry.total_paid|floatformat:0|intcomma }}</td>
-          <td>{{ entry.remaining|floatformat:0|intcomma }}</td>
-          <td>{{ entry.daily_installment|floatformat:0|intcomma }}</td>
+          <td data-label="Client">{{ entry.client.name }}</td>
+          <td data-label="Loan (KES)">{{ entry.loan.amount|floatformat:0|intcomma }}</td>
+          <td data-label="Total Due">{{ entry.loan.total_with_interest|floatformat:0|intcomma }}</td>
+          <td data-label="Paid">{{ entry.total_paid|floatformat:0|intcomma }}</td>
+          <td data-label="Remaining">{{ entry.remaining|floatformat:0|intcomma }}</td>
+          <td data-label="Daily Installment">{{ entry.daily_installment|floatformat:0|intcomma }}</td>
         </tr>
       {% endfor %}
     </tbody>

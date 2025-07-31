@@ -75,6 +75,16 @@ def daily_summary_view(request):
 
             closing_balance = opening_amount + total_collections - total_loans - total_moneyout
 
+            today = timezone.localdate()
+            tomorrow = today + timedelta(days=1)
+
+            # ✅ Only auto-create if the selected date is today
+            if date_obj == today:
+                if not OpeningBalance.objects.filter(date=tomorrow).exists():
+                    print("Creating tomorrow's opening balance...")
+                    OpeningBalance.objects.create(date=tomorrow, amount=closing_balance)
+
+
             context.update({
                 "opening": opening_amount,
                 "total_loans": total_loans,
@@ -231,79 +241,99 @@ def dashboard_view(request):
     total_due = total_loaned + total_interest
     total_remaining = total_due - total_collected
 
-    # New: recent entries
-    recent_loans = Loan.objects.select_related('client').order_by('-date')[:5]
-    recent_payments = Payment.objects.select_related('client').order_by('-date')[:5]
-    recent_moneyouts = MoneyOut.objects.order_by('-date')[:5]
-    recent_openings = OpeningBalance.objects.order_by('-date')[:5]
+    # 🔽 New logic for today's closing balance
+    today = timezone.localdate()
+    opening = OpeningBalance.objects.filter(date=today).first()
+    opening_amount = opening.amount if opening else 0
 
+    today_loans = Loan.objects.filter(date=today)
+    today_payments = Payment.objects.filter(date=today)
+    today_moneyouts = MoneyOut.objects.filter(date=today)
 
+    total_today_loans = sum([l.amount for l in today_loans])
+    total_today_collections = sum([p.amount for p in today_payments])
+    total_today_moneyout = sum([m.amount for m in today_moneyouts])
 
+    closing_balance = opening_amount + total_today_collections - total_today_loans - total_today_moneyout
+
+    # ✅ Now define context AFTER all calculations
     context = {
         "total_clients": total_clients,
         "total_loaned": total_loaned,
         "total_collected": total_collected,
         "total_remaining": total_remaining,
-        'recent_loans': recent_loans,
-        'recent_payments': recent_payments,
-        'recent_moneyouts': recent_moneyouts,
-        'recent_openings': recent_openings,
         "name_query": name_query,
         "date_query": date_query,
-        "today": date.today(),  # ✅ THIS LINE FIXES THE ERROR
+        "today": today,
+        "closing_balance": closing_balance,
+        "opening": opening_amount,
+        "total_today_loans": total_today_loans,
+        "total_today_collections": total_today_collections,
+        "total_today_moneyout": total_today_moneyout,
     }
 
     return render(request, "core/dashboard.html", context)
+
 
 
 def get_or_create_client(name):
     client, created = Client.objects.get_or_create(name__iexact=name.strip(), defaults={'name': name.strip()})
     return client
 
+
 def data_entry_view(request):
+    # Initialize blank forms
     loan_form = LoanForm()
     payment_form = PaymentForm()
     moneyout_form = MoneyOutForm()
     opening_form = OpeningBalanceForm()
 
-
     if request.method == 'POST':
-        form_type = request.POST.get('form_type')  # ✅ Add this line
+        form_type = request.POST.get('form_type')
 
-        if 'submit_loan' in request.POST and loan_form.is_valid():
-            client_name = loan_form.cleaned_data['client_name']
-            client, _ = Client.objects.get_or_create(name=client_name)
+        # === Loan ===
+        if form_type == 'loan':
+            loan_form = LoanForm(request.POST)
+            if loan_form.is_valid():
+                client_name = loan_form.cleaned_data['client_name']
+                client = get_or_create_client(client_name)
 
-            Loan.objects.create(
-                client=client,
-                amount=loan_form.cleaned_data['amount'],
-                date=loan_form.cleaned_data['date'] or timezone.now().date()
-            )
-            return redirect('data_entry')
+                Loan.objects.create(
+                    client=client,
+                    amount=loan_form.cleaned_data['amount'],
+                    date=loan_form.cleaned_data['date'] or timezone.now().date()
+                )
+                return redirect('data_entry')
 
-        elif 'submit_payment' in request.POST and payment_form.is_valid():
-            client_name = payment_form.cleaned_data['client_name']
-            client, _ = Client.objects.get_or_create(name=client_name)
+        # === Payment ===
+        elif form_type == 'payment':
+            payment_form = PaymentForm(request.POST)
+            if payment_form.is_valid():
+                client_name = payment_form.cleaned_data['client_name']
+                client = get_or_create_client(client_name)
 
-            Payment.objects.create(
-                client=client,
-                amount=payment_form.cleaned_data['amount'],
-                date=payment_form.cleaned_data['date'] or timezone.now().date()
-            )
-            return redirect('data_entry')
+                Payment.objects.create(
+                    client=client,
+                    amount=payment_form.cleaned_data['amount'],
+                    date=payment_form.cleaned_data['date'] or timezone.now().date()
+                )
+                return redirect('data_entry')
 
+        # === Money Out ===
         elif form_type == 'moneyout':
             moneyout_form = MoneyOutForm(request.POST)
             if moneyout_form.is_valid():
                 moneyout_form.save()
                 return redirect('data_entry')
 
+        # === Opening Balance ===
         elif form_type == 'opening':
             opening_form = OpeningBalanceForm(request.POST)
             if opening_form.is_valid():
                 opening_form.save()
                 return redirect('data_entry')
 
+    # Load existing records
     context = {
         "loan_form": loan_form,
         "payment_form": payment_form,
@@ -315,7 +345,6 @@ def data_entry_view(request):
         "openings": OpeningBalance.objects.all().order_by("-date"),
     }
     return render(request, "core/data_entry.html", context)
-
 
 
 def delete_loan(request, pk):
@@ -341,19 +370,26 @@ def delete_opening(request, pk):
 
 def edit_loan(request, pk):
     loan = get_object_or_404(Loan, pk=pk)
-    form = LoanForm(request.POST or None, instance=loan)
-    if form.is_valid():
-        form.save()
-        return redirect('data_entry')
+    if request.method == 'POST':
+        form = LoanForm(request.POST, instance=loan)
+        if form.is_valid():
+            form.save()
+            return redirect('data-entry')  # or your preferred redirect
+    else:
+        form = LoanForm(instance=loan)
     return render(request, 'core/edit_form.html', {'form': form, 'title': 'Edit Loan'})
 
 def edit_payment(request, pk):
     payment = get_object_or_404(Payment, pk=pk)
-    form = PaymentForm(request.POST or None, instance=payment)
-    if form.is_valid():
-        form.save()
-        return redirect('data_entry')
+    if request.method == 'POST':
+        form = PaymentForm(request.POST, instance=payment)
+        if form.is_valid():
+            form.save()
+            return redirect('data-entry')  # or your preferred redirect
+    else:
+        form = PaymentForm(instance=payment)
     return render(request, 'core/edit_form.html', {'form': form, 'title': 'Edit Payment'})
+
 
 def edit_moneyout(request, pk):
     moneyout = get_object_or_404(MoneyOut, pk=pk)

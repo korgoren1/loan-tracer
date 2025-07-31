@@ -2,112 +2,220 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Data Entry</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            padding: 20px;
-            background-color: #f8f9fa;
-        }
-        h2 {
-            margin-top: 40px;
-        }
-        .section {
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .table td, .table th {
-            vertical-align: middle;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Data Entry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .section {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      padding: 20px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .section h2 {
+      margin-bottom: 15px;
+      font-size: 22px;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 5px;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    form input, form select {
+      flex: 1 1 100%;
+      padding: 10px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    form button {
+      background: #007BFF;
+      color: #fff;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 15px;
+      margin-top: 5px;
+    }
+
+    form button:hover {
+      background: #0056b3;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin-top: 15px;
+    }
+
+    ul li {
+      padding: 8px 10px;
+      border-bottom: 1px dashed #ccc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      flex-wrap: wrap;
+    }
+
+    .entry-text {
+      flex: 1 1 auto;
+    }
+
+    .action {
+      margin-left: 8px;
+      font-size: 14px;
+      text-decoration: none;
+    }
+
+    .edit { color: #28a745; }
+    .delete { color: #dc3545; }
+
+    @media (max-width: 600px) {
+      form input, form select, form button {
+        font-size: 16px;
+      }
+
+      ul li {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .action {
+        margin-left: 0;
+        margin-top: 4px;
+        display: inline-block;
+      }
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-    <h1 class="mb-4">Loan Management - Data Entry</h1>
 
-    <!-- Loan Entry -->
-    <div class="section">
-        <h2>Add New Loan</h2>
-        <form method="post">
-            {% csrf_token %}
-            {{ loan_form.as_p }}
-            <button type="submit" name="submit_loan" class="btn btn-primary">Save Loan</button>
-        </form>
-    </div>
+  <!-- Loan Entry -->
+  <div class="section">
+    <h2>New Loan</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="loan">
+      <input type="text" name="client_name" placeholder="Client Name" required>
+      <input type="number" step="0.01" name="amount" placeholder="Loan Amount" required>
+      <input type="date" name="date">
+      <button type="submit">Save Loan</button>
+    </form>
+    <ul>
+      {% for loan in loans %}
+        <li>
+          <span class="entry-text">{{ loan.date }} – {{ loan.client.name }} – {{ loan.amount }}</span>
+          <span>
+            <a href="{% url 'edit_loan' loan.id %}" class="action edit">Edit</a>
+            <a href="{% url 'delete_loan' loan.id %}" class="action delete">Delete</a>
+          </span>
+        </li>
+      {% empty %}
+        <li>No loans recorded yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
 
-    <!-- Payment Entry -->
-    <div class="section">
-        <h2>Record Payment</h2>
-        <form method="post">
-            {% csrf_token %}
-            {{ payment_form.as_p }}
-            <button type="submit" name="submit_payment" class="btn btn-success">Save Payment</button>
-        </form>
-    </div>
+  <!-- Payment Entry -->
+  <div class="section">
+    <h2>Payment Received</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="payment">
+      <input type="text" name="client_name" placeholder="Client Name" required>
+      <input type="number" step="0.01" name="amount" placeholder="Payment Amount" required>
+      <input type="date" name="date">
+      <button type="submit">Save Payment</button>
+    </form>
+    <ul>
+      {% for payment in payments %}
+        <li>
+          <span class="entry-text">{{ payment.date }} – {{ payment.client.name }} – {{ payment.amount }}</span>
+          <span>
+            <a href="{% url 'edit_payment' payment.id %}" class="action edit">Edit</a>
+            <a href="{% url 'delete_payment' payment.id %}" class="action delete">Delete</a>
+          </span>
+        </li>
+      {% empty %}
+        <li>No payments recorded yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
 
-    <!-- Existing Loans -->
-    <div class="section">
-        <h2>Loans</h2>
-        <table class="table table-bordered table-sm table-striped">
-            <thead class="table-light">
-                <tr>
-                    <th>Date</th>
-                    <th>Client</th>
-                    <th>Amount (KES)</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for loan in loans %}
-                <tr>
-                    <td>{{ loan.date }}</td>
-                    <td>{{ loan.client.name }}</td>
-                    <td>{{ loan.amount }}</td>
-                    <td>
-                        <a href="{% url 'edit_loan' loan.id %}" class="btn btn-sm btn-warning">Edit</a>
-                        <a href="{% url 'delete_loan' loan.id %}" class="btn btn-sm btn-danger">Delete</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4" class="text-center">No loans recorded.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+  <!-- Money Out Entry -->
+  <div class="section">
+    <h2>Money Out</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="moneyout">
+      <input type="number" step="0.01" name="amount" placeholder="Amount" required>
+      <input type="date" name="date">
+      <select name="type" required>
+        <option value="">-- Select Type --</option>
+        <option value="expense">Expense</option>
+        <option value="withdrawal">Withdrawal</option>
+      </select>
+      <input type="text" name="description" placeholder="Description">
+      <button type="submit">Save Money Out</button>
+    </form>
+    <ul>
+      {% for money in moneyouts %}
+        <li>
+          <span class="entry-text">{{ money.date }} – {{ money.type }} – {{ money.amount }} – {{ money.description }}</span>
+          <span>
+            <a href="{% url 'edit_moneyout' money.id %}" class="action edit">Edit</a>
+            <a href="{% url 'delete_moneyout' money.id %}" class="action delete">Delete</a>
+          </span>
+        </li>
+      {% empty %}
+        <li>No money out recorded yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
 
-    <!-- Existing Payments -->
-    <div class="section">
-        <h2>Payments</h2>
-        <table class="table table-bordered table-sm table-striped">
-            <thead class="table-light">
-                <tr>
-                    <th>Date</th>
-                    <th>Client</th>
-                    <th>Amount (KES)</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for payment in payments %}
-                <tr>
-                    <td>{{ payment.date }}</td>
-                    <td>{{ payment.client.name }}</td>
-                    <td>{{ payment.amount }}</td>
-                    <td>
-                        <a href="{% url 'edit_payment' payment.id %}" class="btn btn-sm btn-warning">Edit</a>
-                        <a href="{% url 'delete_payment' payment.id %}" class="btn btn-sm btn-danger">Delete</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4" class="text-center">No payments recorded.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+  <!-- Opening Balance Entry -->
+  <div class="section">
+    <h2>Opening Balance</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="opening">
+      <input type="number" step="0.01" name="amount" placeholder="Amount" required>
+      <input type="date" name="date">
+      <button type="submit">Save Opening Balance</button>
+    </form>
+    <ul>
+      {% for open in openings %}
+        <li>
+          <span class="entry-text">{{ open.date }} – {{ open.amount }}</span>
+          <span>
+            <a href="{% url 'edit_opening' open.id %}" class="action edit">Edit</a>
+            <a href="{% url 'delete_opening' open.id %}" class="action delete">Delete</a>
+          </span>
+        </li>
+      {% empty %}
+        <li>No opening balances yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
 </body>
 </html>
