@@ -103,40 +103,38 @@ def daily_summary_view(request):
 
 
 def client_summary_view(request):
-    name_query = request.GET.get("name", "")
-    date_query = request.GET.get("date", "")
+    name_query = request.GET.get('name', '')
 
-    loans = Loan.objects.select_related("client")
+    clients = Client.objects.all()
     if name_query:
-        loans = loans.filter(client__name__icontains=name_query)
-    if date_query:
-        loans = loans.filter(date=date_query)
+        clients = clients.filter(name__icontains=name_query)
 
-    client_data = []
-    for loan in loans:
-        client = loan.client
-        total_paid = sum(p.amount for p in Payment.objects.filter(client=client))
-        total_due = loan.total_with_interest()
+    data = []
+
+    for client in clients:
+        loans = Loan.objects.filter(client=client)
+        payments = Payment.objects.filter(client=client)
+
+        total_loaned = loans.aggregate(Sum('amount'))['amount__sum'] or 0
+        total_paid = payments.aggregate(Sum('amount'))['amount__sum'] or 0
+        total_interest = total_loaned * 0.2
+        total_due = total_loaned + total_interest
         remaining = total_due - total_paid
 
-        # Daily Installment
-        daily_installment = round(total_due / 12, 2)
-
-        client_data.append({
-            "loan": loan,
+        data.append({
             "client": client,
+            "loans": loans,
+            "payments": payments,
+            "total_loaned": total_loaned,
             "total_paid": total_paid,
-            "remaining": remaining,
-            "daily_installment": daily_installment,
+            "total_due": total_due,
+            "remaining": remaining
         })
 
-    context = {
-        "client_data": client_data,
+    return render(request, "core/client_summary.html", {
+        "data": data,
         "name_query": name_query,
-        "date_query": date_query,
-    }
-    return render(request, "core/client_summary.html", context)
-
+    })
 
 def render_to_pdf(template_src, context_dict={}):
     template = get_template(template_src)

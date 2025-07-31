@@ -1,156 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Client Loan Summary (PDF)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Summary</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      font-size: 13px;
+      font-family: Arial, sans-serif;
       margin: 30px;
-      color: #333;
-      background-color: #fefefe;
+      background: #f8f8f8;
     }
 
     h2 {
       text-align: center;
-      color: #2c3e50;
       margin-bottom: 20px;
     }
 
-    p {
-      text-align: right;
-      font-size: 13px;
-      margin-bottom: 20px;
-      color: #555;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      font-size: 13px;
-    }
-
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
+    form {
       text-align: center;
+      margin-bottom: 30px;
     }
 
-    th {
-      background-color: #f0f0f0;
+    input[type="text"] {
+      padding: 8px;
+      width: 300px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 8px 14px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .client-card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 5px solid #3498db;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .client-card h3 {
+      margin-top: 0;
       color: #2c3e50;
-      font-weight: bold;
     }
 
-    tbody tr:nth-child(even) {
-      background-color: #f9f9f9;
+    ul {
+      list-style: none;
+      padding-left: 0;
     }
 
-    td:nth-child(2),
-    td:nth-child(3),
-    td:nth-child(4),
-    td:nth-child(6) {
-      font-weight: bold;
-      color: #2e8b57;
+    li {
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
     }
 
-    td:nth-child(5) {
+    .amount {
       font-weight: bold;
+      color: #27ae60;
+    }
+
+    .remaining {
       color: #c0392b;
-    }
-
-    /* Mobile responsive */
-    @media (max-width: 768px) {
-      table, thead, tbody, th, td, tr {
-        display: block;
-      }
-
-      thead {
-        display: none;
-      }
-
-      tr {
-        margin-bottom: 15px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        padding: 10px;
-        background: #fff;
-      }
-
-      td {
-        padding-left: 50%;
-        position: relative;
-        text-align: left;
-        border: none;
-        border-bottom: 1px solid #eee;
-      }
-
-      td::before {
-        content: attr(data-label);
-        position: absolute;
-        left: 10px;
-        top: 8px;
-        font-weight: bold;
-        color: #888;
-      }
-    }
-
-    /* Print-friendly */
-    @media print {
-      body {
-        margin: 10mm;
-      }
-
-      table {
-        page-break-inside: auto;
-      }
-
-      tr {
-        page-break-inside: avoid;
-        page-break-after: auto;
-      }
-
-      thead {
-        display: table-header-group;
-      }
-
-      tfoot {
-        display: table-footer-group;
-      }
     }
   </style>
 </head>
 <body>
-  {% load humanize %}
-  <h2>Client Loan Summary (PDF)</h2>
-  <p>Date: {{ today }}</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Client</th>
-        <th>Loan</th>
-        <th>Total Due</th>
-        <th>Paid</th>
-        <th>Remaining</th>
-        <th>Daily Installment</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in client_data %}
-        <tr>
-          <td data-label="Client">{{ entry.client.name }}</td>
-          <td data-label="Loan">{{ entry.loan.amount|floatformat:0|intcomma }}</td>
-          <td data-label="Total Due">{{ entry.loan.total_with_interest|floatformat:0|intcomma }}</td>
-          <td data-label="Paid">{{ entry.total_paid|floatformat:0|intcomma }}</td>
-          <td data-label="Remaining">{{ entry.remaining|floatformat:0|intcomma }}</td>
-          <td data-label="Daily Installment">{{ entry.daily_installment|floatformat:0|intcomma }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <h2>Client Summary</h2>
+
+  <form method="get">
+    <input type="text" name="name" placeholder="Search by client name" value="{{ name_query }}">
+    <button type="submit">Search</button>
+  </form>
+
+  {% for entry in data %}
+    <div class="client-card">
+      <h3>{{ entry.client.name }}</h3>
+      <p><strong>Total Loaned:</strong> KES {{ entry.total_loaned }}</p>
+      <p><strong>Total Paid:</strong> KES {{ entry.total_paid }}</p>
+      <p><strong>Total Due (with 20% interest):</strong> KES {{ entry.total_due }}</p>
+      <p><strong class="remaining">Remaining:</strong> KES {{ entry.remaining }}</p>
+
+      <h4>Payment Entries:</h4>
+      {% if entry.payments %}
+        <ul>
+          {% for p in entry.payments %}
+            <li>{{ p.date }} - <span class="amount">KES {{ p.amount }}</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No payments yet.</p>
+      {% endif %}
+    </div>
+  {% empty %}
+    <p>No clients found.</p>
+  {% endfor %}
+
 </body>
 </html>
