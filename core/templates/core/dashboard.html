@@ -54,6 +54,14 @@
       font-weight: bold;
       color: #007bff;
     }
+    .recent-grid ul li {
+  background: #f7f7f7;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.95em;
+}
+
   </style>
 </head>
 <body>
@@ -64,6 +72,11 @@
   <button type="submit">🔍 Filter</button>
   <a href="/" style="margin-left: 10px;">Clear</a>
 </form>
+<div style="text-align: right; margin-bottom: 15px;">
+  <a href="{% url 'data_entry' %}" class="btn btn-primary" style="padding: 10px 16px; background-color: #4f46e5; color: white; border-radius: 6px; text-decoration: none;">
+    ➕ Add New Record
+  </a>
+</div>
 
   <div class="cards">
     <div class="card">
@@ -89,6 +102,59 @@
     </div>
   </div>
 
+  <hr>
+<h2 style="margin-top: 40px;">📌 Recent Activity</h2>
+<div class="recent-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 20px;">
+
+  <!-- Recent Loans -->
+  <div>
+    <h4>🧾 Recent Loans</h4>
+    <ul style="list-style: none; padding-left: 0;">
+      {% for loan in recent_loans %}
+        <li>{{ loan.date }} — <strong>{{ loan.client.name }}</strong>: KES {{ loan.amount }}</li>
+      {% empty %}
+        <li>No loans yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Recent Payments -->
+  <div>
+    <h4>💰 Recent Payments</h4>
+    <ul style="list-style: none; padding-left: 0;">
+      {% for p in recent_payments %}
+        <li>{{ p.date }} — <strong>{{ p.client.name }}</strong>: KES {{ p.amount }}</li>
+      {% empty %}
+        <li>No payments yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Recent Money Out -->
+  <div>
+    <h4>📤 Money Out</h4>
+    <ul style="list-style: none; padding-left: 0;">
+      {% for m in recent_moneyouts %}
+        <li>{{ m.date }} — {{ m.description }}: KES {{ m.amount }}</li>
+      {% empty %}
+        <li>No expenses yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Opening Balances -->
+  <div>
+    <h4>📈 Opening Balances</h4>
+    <ul style="list-style: none; padding-left: 0;">
+      {% for o in recent_openings %}
+        <li>{{ o.date }}: KES {{ o.amount }}</li>
+      {% empty %}
+        <li>No opening balances yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
   <div class="links">
   <a href="{% url 'daily-summary' %}">📅 Daily Summary</a>
   <a href="{% url 'client-summary' %}">👥 Client Summary</a>
@@ -100,5 +166,19 @@
   </a>
 
   </div>
+  <a href="{% url 'data_entry' %}" title="Add New Entry" style="
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: #4CAF50;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 50px;
+  font-size: 18px;
+  text-decoration: none;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  z-index: 1000;
+">＋</a>
+
 </body>
 </html>

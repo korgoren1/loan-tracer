@@ -231,11 +231,23 @@ def dashboard_view(request):
     total_due = total_loaned + total_interest
     total_remaining = total_due - total_collected
 
+    # New: recent entries
+    recent_loans = Loan.objects.select_related('client').order_by('-date')[:5]
+    recent_payments = Payment.objects.select_related('client').order_by('-date')[:5]
+    recent_moneyouts = MoneyOut.objects.order_by('-date')[:5]
+    recent_openings = OpeningBalance.objects.order_by('-date')[:5]
+
+
+
     context = {
         "total_clients": total_clients,
         "total_loaned": total_loaned,
         "total_collected": total_collected,
         "total_remaining": total_remaining,
+        'recent_loans': recent_loans,
+        'recent_payments': recent_payments,
+        'recent_moneyouts': recent_moneyouts,
+        'recent_openings': recent_openings,
         "name_query": name_query,
         "date_query": date_query,
         "today": date.today(),  # ✅ THIS LINE FIXES THE ERROR
